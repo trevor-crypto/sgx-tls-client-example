@@ -1,36 +1,43 @@
 import com.cryptodotcom.EnclaveCertVerifier;
 import com.cryptodotcom.types.EnclaveQuoteStatus;
 import com.google.gson.Gson;
+import org.spongycastle.jce.provider.BouncyCastleProvider;
 
+
+import javax.net.ssl.*;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
-import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.security.*;
 import java.security.cert.CertificateException;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.Objects;
 import java.util.Set;
-
-import javax.net.ssl.*;
 
 class SgxClientTLSTest {
     public static void main(String[] args) {
+        Security.addProvider(new BouncyCastleProvider());
+
         try {
             // init keystore with intel sgx CA added
             final char[] password = "123456".toCharArray();
             ClassLoader loader = ClassLoader.getSystemClassLoader();
-            final KeyStore keyStore = KeyStore.getInstance(new File(Objects.requireNonNull(loader.getResource("javaKeyStore.jks")).getFile()), password);
-            final KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance("NewSunX509");
+            final InputStream keyStoreStream = loader.getResourceAsStream("IntelCACert.bks");
+            KeyStore keyStore = KeyStore.getInstance("BKS", "SC");
+            keyStore.load(keyStoreStream, password);
+            final KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance("SunX509");
             keyManagerFactory.init(keyStore, password);
+
+            InputStream attestationReportCACertStream = loader.getResourceAsStream("AttestationReportSigningCACert.der");
 
             // Create enclave tls client
             Set<EnclaveQuoteStatus> validStatuses = new HashSet<>();
             validStatuses.add(EnclaveQuoteStatus.OK);
             validStatuses.add(EnclaveQuoteStatus.CONFIGURATION_AND_SW_HARDENING_NEEDED);
-            final EnclaveCertVerifier ecv = new EnclaveCertVerifier(validStatuses, Duration.ofSeconds(86400));
+            validStatuses.add(EnclaveQuoteStatus.SW_HARDENING_NEEDED);
+            final EnclaveCertVerifier ecv = new EnclaveCertVerifier(validStatuses, Duration.ofSeconds(86400), attestationReportCACertStream);
             final TrustManager[] trustManagers = new EnclaveCertVerifier[]{ecv};
 
             // create ssl context
@@ -39,7 +46,7 @@ class SgxClientTLSTest {
 
             SSLSocketFactory factory = sslContext.getSocketFactory();
 
-            SSLSocket socket = (SSLSocket) factory.createSocket("127.0.0.1", 55555);
+            SSLSocket socket = (SSLSocket) factory.createSocket("20.205.161.251", 60001);
             DataOutputStream out = new DataOutputStream(socket.getOutputStream());
             DataInputStream in = new DataInputStream(socket.getInputStream());
 
@@ -65,7 +72,7 @@ class SgxClientTLSTest {
             out.close();
             in.close();
             socket.close();
-        } catch (IOException | CertificateException | NoSuchAlgorithmException | KeyStoreException | UnrecoverableKeyException | KeyManagementException e) {
+        } catch (IOException | CertificateException | NoSuchAlgorithmException | KeyStoreException | UnrecoverableKeyException | KeyManagementException | NoSuchProviderException e) {
             e.printStackTrace();
         }
     }
