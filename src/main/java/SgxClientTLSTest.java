@@ -9,6 +9,8 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.security.*;
 import java.security.cert.CertificateException;
 import java.time.Duration;
@@ -63,8 +65,13 @@ class SgxClientTLSTest {
             out.flush();
 
             // reading response, should be Pong
-            char responseLength = in.readChar(); // 2 bytes
-            byte[] responseData = in.readNBytes(responseLength);
+            ByteBuffer buffer = ByteBuffer.allocate(2);
+            buffer.order(ByteOrder.LITTLE_ENDIAN);
+            in.read(buffer.array());
+            short responseLength = buffer.getShort();
+            System.out.println(responseLength); // should be 6
+            byte[] responseData = new byte[responseLength];
+            int nBytes = in.read(responseData);
             String response = new String(responseData);
             assert response.equals("pong");
             System.out.println("Result: " + response);
