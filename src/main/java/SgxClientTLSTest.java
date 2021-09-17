@@ -56,21 +56,20 @@ class SgxClientTLSTest {
             Gson gson = new Gson();
             String pingReq = gson.toJson("ping");
             System.out.println("ping req: [" + pingReq + "]");
-
-            byte[] pingReqLength = getLengthBytes(pingReq.length());
-            System.out.println("Writing length:" + Arrays.toString(pingReqLength));
-            out.write(pingReqLength);
+            // write req length
+            out.writeShort(pingReq.length());
             System.out.println("Writing PING request...");
+            // write json
             out.writeBytes(pingReq);
             out.flush();
 
             // reading response, should be Pong
-            ByteBuffer buffer = ByteBuffer.allocate(2);
-            buffer.order(ByteOrder.LITTLE_ENDIAN);
-            in.read(buffer.array());
-            short responseLength = buffer.getShort();
-            System.out.println(responseLength); // should be 6
+            // read 2 byte length
+            short responseLength = in.readShort();
+            assert responseLength == 6;
+            System.out.println(responseLength);
             byte[] responseData = new byte[responseLength];
+            // read response
             int nBytes = in.read(responseData);
             String response = new String(responseData);
             assert response.equals("pong");
@@ -82,10 +81,5 @@ class SgxClientTLSTest {
         } catch (IOException | CertificateException | NoSuchAlgorithmException | KeyStoreException | UnrecoverableKeyException | KeyManagementException | NoSuchProviderException e) {
             e.printStackTrace();
         }
-    }
-
-    private static byte[] getLengthBytes(int length) {
-        // length of json represented as two bytes LE
-        return new byte[]{(byte) length, (byte) (length >>> 8)};
     }
 }
