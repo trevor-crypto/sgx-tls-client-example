@@ -1,6 +1,7 @@
 plugins {
     id 'java'
     id 'application'
+    id 'org.jetbrains.kotlin.jvm' version '1.5.30'
 }
 
 group 'org.cryptodotcom'
@@ -18,9 +19,10 @@ dependencies {
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.2'
 
     implementation 'com.google.code.gson:gson:2.8.7'
-    implementation name: 'sgx-ra-tls-client-1.2'
+    implementation name: 'sgx-ra-tls-client-1.3'
     implementation 'com.madgag.spongycastle:bcpkix-jdk15on:1.58.0.0'
     implementation 'com.madgag.spongycastle:prov:1.58.0.0'
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
 
 }
 
@@ -29,4 +31,14 @@ application {
 }
 test {
     useJUnitPlatform()
+}
+compileKotlin {
+    kotlinOptions {
+        jvmTarget = "1.8"
+    }
+}
+compileTestKotlin {
+    kotlinOptions {
+        jvmTarget = "1.8"
+    }
 }
